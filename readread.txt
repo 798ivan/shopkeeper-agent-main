@@ -1,0 +1,70 @@
+终端 1：后端（虚拟环境）
+1. 进入项目目录
+cd D:\workspace3\ai\shopkeeper-agent-main
+2. 创建虚拟环境（只做一次）
+
+uv venv
+3. 安装依赖（只做一次，或依赖变更后重做）
+uv sync
+4. 配置大模型 Key（只做一次）
+copy .env.example .env
+notepad .env
+在 .env 里确认有（换成你自己的密钥）：
+
+LLM_API_KEY=你的真实密钥
+保存关闭。
+
+5. 对齐 MySQL 密码（重要，只做一次）
+Docker 里 root 密码是 dili123。若 conf\app_config.yaml 里还是 password: root，请改成 dili123：
+
+notepad conf\app_config.yaml
+把 db_meta 和 db_dw 下的 password 都改为：
+
+password: dili123
+6. 激活虚拟环境
+.\.venv\Scripts\Activate.ps1
+若提示脚本被禁止：
+
+Set-ExecutionPolicy -Scope CurrentUser RemoteSigned
+.\.venv\Scripts\Activate.ps1
+提示符前出现 (.venv) 或类似前缀即成功。
+
+7. 构建元数据知识库（第一次必跑；已成功可跳过）
+等 MySQL 完全起来后再执行（可先看库是否已有）：
+
+docker exec -it mysql mysql -uroot -pdili123 -e "SHOW DATABASES;"
+构建知识库：
+
+cd D:\workspace3\ai\shopkeeper-agent-main
+python -m app.scripts.build_meta_knowledge -c conf/meta_config.yaml
+未激活 venv 时等价写法：
+
+uv run python -m app.scripts.build_meta_knowledge -c conf/meta_config.yaml
+跑完无报错即可。
+
+8. 可选：检查基础服务是否可达
+curl http://127.0.0.1:9200
+curl http://127.0.0.1:6333
+curl http://127.0.0.1:8081/health
+9. 启动后端 API
+已激活虚拟环境：
+
+cd D:\workspace3\ai\shopkeeper-agent-main
+fastapi dev main.py
+或未激活，用 uv：
+
+cd D:\workspace3\ai\shopkeeper-agent-main
+uv run fastapi dev main.py
+看到类似：
+
+Uvicorn running on http://127.0.0.1:8000
+不要关这个终端，保持运行。
+
+终端 2：前端（不用 Python 虚拟环境）
+新开一个 PowerShell：
+
+cd D:\workspace3\ai\shopkeeper-agent-main\frontend
+pnpm install
+pnpm dev
+浏览器打开终端里显示的地址（一般是 **http://localhost:5173**），在页面里用自然语言提问即可。
+

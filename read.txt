@@ -1,0 +1,66 @@
+一、环境要求
+工具	说明
+Python ≥ 3.14
+后端
+uv
+Python 依赖：pip install uv 或见 uv 文档
+Docker Desktop
+MySQL、ES、Qdrant、Embedding
+Node.js + pnpm
+前端：npm install -g pnpm
+二、后端
+在项目根目录 d:\workspace3\ai\shopkeeper-agent-main：
+
+# 1. 安装 Python 依赖
+uv sync
+# 2. 配置大模型 Key（你还没有 .env，需要创建）
+copy .env.example .env
+# 用编辑器打开 .env，把 LLM_API_KEY 改成你在硅基流动等平台的真实密钥
+conf/app_config.yaml 里 LLM 已指向硅基流动；Key 只放在 .env 的 LLM_API_KEY 即可。
+
+三、Embedding 模型（必做）
+TEI 需要本地模型目录，仓库里不包含大文件：
+
+uv run hf download BAAI/bge-large-zh-v1.5 --local-dir docker/embedding/bge-large-zh-v1.5
+没有 hf 时，可从 Hugging Face 手动下载并解压到 docker\embedding\bge-large-zh-v1.5。
+
+四、Docker 基础服务
+docker compose -f docker/docker-compose.yaml up -d
+首次启动会自动执行 docker/mysql/meta.sql、dw.sql 初始化 meta 和 dw 库。
+
+服务	端口
+MySQL
+3306
+Elasticsearch
+9200
+Qdrant
+6333
+Embedding (TEI)
+8081
+确认容器都在跑：docker compose -f docker/docker-compose.yaml ps。
+
+五、构建元数据知识库（必做，否则问数召回为空）
+uv run python -m app.scripts.build_meta_knowledge -c conf/meta_config.yaml
+会把元数据写入 MySQL、向量进 Qdrant、字段取值进 ES。
+
+六、启动后端
+fastapi dev main.py
+默认：http://127.0.0.1:8000，问数接口：POST /api/query。
+
+七、启动前端
+新开一个终端：
+
+cd d:\workspace3\ai\shopkeeper-agent-main\frontend
+pnpm install
+pnpm dev
+浏览器打开 Vite 提示的地址（一般是 http://localhost:5173），前端会把 /api 代理到 8000。
+
+如需改后端地址：
+
+copy .env.example .env
+# 设置 VITE_DEV_PROXY_TARGET=http://127.0.0.1:8000
+常见问题
+没有 .env：从 .env.example 复制并填写有效的 LLM_API_KEY。
+Embedding 目录不存在：Docker 里 TEI 可能起不来，先完成第三步下载。
+3306/9200/6333/8081 被占用：改 docker-compose.yaml 或关掉占用端口的程序。
+问数报错 / 无结果：多半是跳过第五步，或 Docker 未就绪就跑了构建脚本。
